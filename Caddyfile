@@ -1,0 +1,40 @@
+# Stackline — consola de plataforma.
+#
+# Vive bajo /console (la base con que se compila, VITE_BASE_PATH). En el
+# servidor la publica el Caddy de stack-line-ui en el mismo dominio que la app
+# (https://stackline.com.gt/console), sin quitar el prefijo; publicada sola,
+# también responde y hace de proxy de /api/platform.
+{$SITE_ADDRESS::80} {
+	encode gzip zstd
+
+	# Solo la API de plataforma (cuando se publica sola: detrás del Caddy de
+	# la app, /api ya va al backend antes de llegar aquí).
+	handle /api/platform/* {
+		reverse_proxy {$API_UPSTREAM:backend:8080}
+	}
+
+	redir /console /console/ 308
+
+	handle_path /console/* {
+		# Archivos con hash en el nombre: no cambian nunca, caché de un año.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+
+		root * /srv
+		# SPA: cualquier ruta desconocida devuelve index.html y decide el router.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Cualquier otra ruta es de la consola: se manda a /console.
+	handle {
+		redir * /console{uri} 308
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
