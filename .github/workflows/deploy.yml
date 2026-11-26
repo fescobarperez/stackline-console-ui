@@ -1,0 +1,47 @@
+# Despliegue a producción de la consola — SOLO manual.
+#
+# Despliega únicamente la consola (contenedor `console`, publicado en /console
+# por el Caddy de stack-line-ui): el servidor trae solo este repositorio y
+# reconstruye solo su imagen. El docker-compose y deploy.sh viven en
+# stack-line-services. El servidor corre un despliegue a la vez (deploy.sh
+# toma un candado): si otro repositorio está desplegando, este espera.
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Permite exigir aprobación antes de correr:
+    # Settings → Environments → produccion → Required reviewers.
+    environment: produccion
+    timeout-minutes: 45
+
+    steps:
+      - name: Preparar la clave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Huella fija del servidor: sin esto, un intermediario podría
+          # suplantarlo y recibir la clave.
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Desplegar
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o BatchMode=yes \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "git -C ~/stackline/stack-line-services fetch -q origin main && git -C ~/stackline/stack-line-services show origin/main:deploy/deploy.sh | bash -s -- console"
+
+      - name: Limpiar
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
