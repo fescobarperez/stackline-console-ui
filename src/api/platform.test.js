@@ -18,6 +18,17 @@ describe('suscripcion', () => {
   });
 });
 
+describe('catalogoIa', async () => {
+  const { catalogoIa } = await import('./platform.js');
+  it('conserva los proveedores que el sistema sabe llamar', () => {
+    const c = catalogoIa({ providers: [{ code: 'openai' }], providerCodes: ['anthropic', 'openai'] });
+    expect(c.providerCodes).toEqual(['anthropic', 'openai']);
+  });
+  it('rellena lo que no viene', () => {
+    expect(catalogoIa(null)).toEqual({ providers: [], tools: [], models: [], providerCodes: [] });
+  });
+});
+
 describe('usoEmpresa', async () => {
   const { usoEmpresa } = await import('./platform.js');
   it('rellena el detalle de uso de una empresa sin consumo', () => {

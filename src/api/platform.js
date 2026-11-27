@@ -99,9 +99,13 @@ export const canSeeMoney = (op) => op?.role === 'owner';
 // aquí para que las pantallas no tengan que defenderse en cada uso.
 const modelo = (m) => ({ usedBy: [], companiesCount: 0, cachedCost1k: null, imageCost: 0, ...m, usedBy: m.usedBy || [] });
 const agente = (a) => ({ fallbackModelId: null, imageModelId: null, description: null, companiesCount: 0, tenantAgentsCount: 0, archived: false, ...a, tools: a.tools || [] });
-export const getAiCatalog = () => api.get(`${P}/ai/catalog`).then((c) => ({
+// providerCodes: los proveedores que agents-services sabe llamar; «Nuevo
+// proveedor» ofrece los que aún no están dados de alta.
+export const catalogoIa = (c) => ({
   providers: c?.providers || [], tools: c?.tools || [], models: (c?.models || []).map(modelo),
-}));
+  providerCodes: c?.providerCodes || [],
+});
+export const getAiCatalog = () => api.get(`${P}/ai/catalog`).then(catalogoIa);
 export const createModel = (m) => api.post(`${P}/ai/models`, m).then(modelo);
 export const updateModel = (id, changes) => api.patch(`${P}/ai/models/${id}`, changes).then(modelo);
 export const listAgents = () => api.get(`${P}/ai/agents`).then((l) => (l || []).map(agente));
