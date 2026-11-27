@@ -60,6 +60,10 @@ export default function AgentDialog({ agent: existente, models, tools, onClose, 
       try { tope = parseDecimal(f.tools[x.name].maxAmount); } catch { e[`tools.${x.name}`] = t('ai.err.amount', 'Monto mayor a 0'); }
       return { pattern: x.name, mode: x.mode, autoApprove: x.mode === 'read' ? true : f.tools[x.name].autoApprove, maxAmount: x.mode === 'write' ? tope : null };
     });
+    // Los permisos que la lista no muestra (p. ej. el comodín «planificador.*»
+    // del planificador) se conservan tal cual: guardar no le quita permisos.
+    const enLista = new Set(tools.map((x) => x.name));
+    const ocultas = agent.tools.filter((x) => !enLista.has(x.pattern));
     if (!f.name.trim()) e.name = t('ai.err.name', 'El nombre es obligatorio');
     if (nuevo && !/^[a-z][a-z0-9_]{1,59}$/.test(f.code)) e.code = t('ai.err.code', 'Minúsculas, números y guion bajo (2 a 60)');
     if (nuevo && f.prompt.trim().length < 20) e.prompt = t('ai.err.prompt', 'Mínimo 20 caracteres');
@@ -73,7 +77,7 @@ export default function AgentDialog({ agent: existente, models, tools, onClose, 
       temperature: f.temperature.trim() === '' ? NaN : Number(f.temperature),
       maxToolLoops: /^\d+$/.test(f.maxToolLoops) ? Number(f.maxToolLoops) : NaN,
       responseTimeoutMs: /^\d+$/.test(f.timeoutS) ? Number(f.timeoutS) * 1000 : NaN,
-      tools: conversacional ? elegidas : [],
+      tools: conversacional ? [...elegidas, ...ocultas] : [],
     };
     Object.keys(validateAgent(datos, models)).forEach((k) => {
       if (!e[k]) e[k] = k.startsWith('tools.') ? t('ai.err.amount', 'Monto mayor a 0') : mensajes[k];
